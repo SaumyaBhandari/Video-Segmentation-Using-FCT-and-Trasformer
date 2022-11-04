@@ -5,8 +5,8 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from focusnet import FCT
-from unet import UNet
+from EncoderDecoder_A1 import FCT
+from EncoderDecoder_A2 import UNet
 
 
 class Inference():
@@ -67,7 +67,7 @@ class Inference():
         y_pred = model(x)
         self.__view_sample(x, y, y_pred)
     
-model = "focusnet"
+model = "unet"
 seg = Inference(model)
 rand = random.randint(0, 100)
 seg.infer(rand)

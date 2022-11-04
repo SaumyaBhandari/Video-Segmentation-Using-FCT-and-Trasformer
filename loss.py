@@ -16,3 +16,9 @@ class DiceLoss(nn.Module):
             y_pred.sum() + y_true.sum() + self.smooth
         )
         return 1. - dsc
+
+class MSE(nn.Module):
+    def __init__(self):
+        super(MSE, self).__init__()
+
+
