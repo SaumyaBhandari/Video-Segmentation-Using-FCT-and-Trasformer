@@ -70,27 +70,23 @@ decoder = Decoder()
 #initializing buffer and start of sequence for the transfomer decoder
 sequence_length = 8
 buffer = torch.ones((8, 1, 512))
-buffer2 = torch.ones((8, 1, 512))
+# buffer2 = torch.ones((8, 1, 512))
 sos = torch.rand(size=(1, 1, 512))
 
 video_length = 1000
 
-flag = 1
+flag = 0
 index_counter = 0
 for i in range(video_length):
     input_frame = torch.rand(size=(1, 3, 256, 256))
     print(f"Input Frame {flag}")
     out = encoder(input_frame)
-    if flag <= 8:
-        buffer[index_counter, :, :] = out
-    else:
-        x = transDec(sos, buffer)
-        print(f"Transformer output {x.shape}")
-        sos = x
-        x = decoder(x)
-        print(f"Decoder output {x.shape}")
-        buffer = buffer[buffer[0:, :, :]!=0]
-        buffer = torch.cat((buffer2, out))
+    buffer2 = buffer[1: , :, :]
+    buffer = torch.cat((buffer2, out))
+    x = transDec(sos, buffer)
+    sos = x
+    x = decoder(x)
+    print(f"Decoder output {x.shape}")
     # print(buffer.shape)
     # print(f"Latent {flag} added...")
     flag += 1
