@@ -14,13 +14,13 @@ class DataLoader():
 
     def make_data(self):
         traindata = []
-        for image, label  in zip(os.listdir('segmented-images/images'), os.listdir('segmented-images/masks')):
-            traindata.append([f'segmented-images/images/{image}', f'segmented-images/masks/{label}'])
+        for image, label  in zip(os.listdir('Driving_Dataset/train_images'), os.listdir('Driving_Dataset/train_masks')):
+            traindata.append([f'Driving_Dataset/train_images/{image}', f'Driving_Dataset/train_masks/{label}'])
         return traindata
 
     def load_data(self, batch_size):
-        train_image= self.make_data()
-        train_dataset = Dataset(train_image, self.transform)
+        traindata= self.make_data()
+        train_dataset = Dataset(traindata, self.transform)
         train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
         return train_dataloader
 
@@ -37,13 +37,16 @@ class Dataset(torch.utils.data.Dataset):
         img_path, mask_path = self.dataset[idx]
         image = Image.open(img_path)
         image = self.transform(image)
-        mask = Image.open(mask_path).convert('L')
+        mask = Image.open(mask_path).convert("RGB")
         mask = self.transform(mask)
         return image, mask
 
 
+
+
+
 # create = DataLoader()
-# l1 = create.load_data(4)
+# l1 = create.load_data(1)
 # for items in l1:
 #     for item in range(0, len(items), 2):
 #         image= items[item][0]

@@ -17,33 +17,25 @@ class Trainer():
         self.model_name = model_name
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.network = self.load_network()
-        self.batch_size = 1
+        self.batch_size = 2
 
     def load_network(self):
         if self.model_name == "focusnet":
             model = FCT()
             check = torch.load('saved_model/model_focusnet.tar')
         else:
-            model = UNet(in_channels=3, out_channels=1)
-            check = torch.load('saved_model/model.tar')
-        model.load_state_dict(check['model_state_dict'])
+            model = UNet(in_channels=3, out_channels=3)
+            # check = torch.load('saved_model/model.tar')
+        # model.load_state_dict(check['model_state_dict'])
         model = model.to(self.device)
         return model
     
     def save_sample(self, epoch, x, y, y_pred):
-        x = x[0:1, :, :, :]
-        y = y[0:1, :, :, :]
-        y_pred = y_pred[0:1, :, :, :]
-        x = torch.squeeze(x)
-        y = torch.squeeze(y)
-        y_pred = torch.squeeze(y_pred)
-        x = transforms.ToPILImage()(x)
-        y = transforms.ToPILImage()(y)
-        y_pred = transforms.ToPILImage()(y_pred)
-
-        image = x.save(f"sneakpeeks_focusnet/{epoch}_input.jpg")
-        actual = y.save(f"sneakpeeks_focusnet/{epoch}_actual.jpg")
-        pred = y_pred.save(f"sneakpeeks_focusnet/{epoch}_predicted.jpg")
+        elements = [x, y, y_pred]
+        elements = [transforms.ToPILImage()(torch.squeeze(element[0:1, :, :, :])) for element in elements]
+        elements[0] = elements[0].save(f"snk_unet_road/{epoch}_input.jpg")
+        elements[1] = elements[1].save(f"snk_unet_road/{epoch}_actual.jpg")
+        elements[2] = elements[2].save(f"snk_unet_road/{epoch}_predicted.jpg")
 
 
     def train(self, epochs, lr=0.0001):
@@ -53,7 +45,8 @@ class Trainer():
         print("Dataset Loaded... initializing parameters...")
         model = self.network
         optimizer = optim.AdamW(model.parameters(), lr)
-        dsc_loss = DiceLoss()
+        # dsc_loss = DiceLoss()
+        crossentloss = torch.nn.CrossEntropyLoss()
 
         loss_train = []
         start = 0
@@ -67,7 +60,8 @@ class Trainer():
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 y_pred = model(x)
-                loss = dsc_loss(y_pred, y)
+                # loss = dsc_loss(y_pred, y)
+                loss = crossentloss(y_pred, y)
                 _loss += loss.item()
                 loss.backward()
                 optimizer.step()
@@ -85,10 +79,10 @@ class Trainer():
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'loss': loss_train
-                }, f'saved_model/model_{self.model_name}.tar')
+                }, f'saved_model/road_model_{self.model_name}.tar')
             print('\nProceeding to the next epoch...')
     
 
-model = "focusnet"
+model = "unet"
 seg = Trainer(model)
-seg.train(epochs=60)
+seg.train(epochs=60) 

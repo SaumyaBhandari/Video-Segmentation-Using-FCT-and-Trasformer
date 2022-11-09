@@ -1,16 +1,26 @@
+import random
+
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torchsummary import summary
+from torchvision import transforms
+from tqdm import tqdm
 
-# from unet import UNet
+from dataset import DataLoader
+from EncoderDecoder_A2 import UNet
 
 
 #encoder block
-class enc_Block(nn.Module):
-    def __init__(self, in_channels):
+class Encoder(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, in_channels*2, 3, 1, padding="same")
+        in_channels = 4
+        self.unet = self.load_prev_encoder()
+        for param in self.unet.parameters():
+            param.requires_grad = False
+        self.conv1 = nn.Conv2d(6, in_channels*2, 3, 1, padding="same")
         self.conv2 = nn.Conv2d(in_channels*2, in_channels*4, 3, 1, padding="same")
         self.conv3 = nn.Conv2d(in_channels*4, in_channels*8, 3, 1, padding="same")
         self.conv4 = nn.Conv2d(in_channels*8, in_channels*16, 3, 1, padding="same")
@@ -20,8 +30,17 @@ class enc_Block(nn.Module):
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.3)
         self.maxpool = nn.MaxPool2d(kernel_size=(2, 2)) 
-        
+        self.linear = linear_bottleneck(512*4, 512)
+
+    def load_prev_encoder(self):
+        model = UNet(in_channels=3, out_channels=3)
+        check = torch.load('saved_model/road_model_unet.tar')
+        model.load_state_dict(check['model_state_dict'])
+        return model
+
     def forward(self, x):
+        x1 = self.unet(x)
+        x = torch.cat((x, x1), dim=1)
         x = self.maxpool(self.relu(self.conv1(x)))
         x = self.maxpool(self.relu(self.conv2(x)))
         x = self.maxpool(self.relu(self.conv3(x)))
@@ -29,7 +48,9 @@ class enc_Block(nn.Module):
         x = self.maxpool(self.relu(self.conv5(x)))
         x = self.maxpool(self.relu(self.conv6(x)))
         x = self.maxpool(self.relu(self.conv7(x)))
-        return x
+        x = x.view(-1, 512*2*2)
+        x = self.linear(x)
+        return x1, x
 
 
 #Linear bottleneck Layer
@@ -45,9 +66,10 @@ class linear_bottleneck(nn.Module):
 
 
 #decoder block
-class dec_Block(nn.Module):
+class Decoder(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
+        self.linear = linear_bottleneck(512, 512*4)
         self.conv1 = nn.ConvTranspose2d(in_channels, in_channels//2, kernel_size=2, stride=2, padding=0)
         self.conv2 = nn.ConvTranspose2d(in_channels//2, in_channels//4, kernel_size=2, stride=2, padding=0)
         self.conv3 = nn.ConvTranspose2d(in_channels//4, in_channels//8, kernel_size=2, stride=2, padding=0)
@@ -58,6 +80,8 @@ class dec_Block(nn.Module):
 
         
     def forward(self, x):
+        x = self.linear(x)
+        x = x.view(x.size(0), 512, 2, 2)
         x = self.relu(self.conv1(x))
         x = self.relu(self.conv2(x))
         x = self.relu(self.conv3(x))
@@ -89,42 +113,85 @@ class DS_out(nn.Module):
 
 #Fully convolutional transformer
 class EncoderDecoder_B(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self):
         super().__init__()
-
         filters = [8, 16, 32, 64, 128, 256, 512] 
-
-        self.enc_CNN = enc_Block(in_channels)
-        self.dec_CNN = dec_Block(filters[-1], filters[-2])
-        self.linear1 = linear_bottleneck(input=2*2*filters[6], output=512)
-        self.linear2 = linear_bottleneck(input=512, output=2*2*filters[6])
-        self.dsMask = DS_out("mask", filters[1], 1)
+        self.encoder = Encoder()
+        self.decoder = Decoder(filters[-1], filters[1])
+        self.dsMask = DS_out("mask", filters[1], 3)
         self.dsImage = DS_out("image", filters[1], 3)
-        # self.decoderLayer = nn.TransformerDecoderLayer(filters[-1], nhead=1)
-        # self.decoder = nn.TransformerDecoder(self.decoderLayer, num_layers=2)
-        # self.prev = torch.randn(1, 1, filters[-1])
+        self.batch_size = 4
 
     def forward(self, x):
-        x = self.enc_CNN(x)
-        x =  x.view(-1, 512*2*2)
-        l = self.linear1(x)
-        # l = l.unsqueeze(dim=1)
-        # l_dash = self.decoder(self.prev, l)
-        # l_dash = l_dash.view(-1, 512)
-        # self.prev = l_dash
-        # x = self.linear2(l_dash)
-        x = self.linear2(l)
-        x = x.view(x.size(0), 512, 2, 2)
-        x = self.dec_CNN(x)
-        outM = self.dsMask(x)
-        outF = self.dsImage(x)
-
-        return outM, outF, l
+        mask_prev, latent = self.encoder(x)
+        decoded = self.decoder(latent)
+        image = self.dsImage(decoded)
+        mask = self.dsMask(decoded)
+        return mask_prev, latent, mask, image
 
 
-# data = (torch.rand(size=(1, 4, 256, 256)))
-# model = EncoderDecoder_B(in_channels=4)
-# out = model(data)
-# print(out[0].shape)
-# print(out[1].shape)
-# print(out[2].shape)
+
+
+
+def save_sample(epoch, mask, mask_pred, x, frame):
+    path = f'sneakpeeks_EncoderDecoderB/{epoch}'
+    elements = [mask, mask_pred, x, frame]
+    elements = [transforms.ToPILImage()(torch.squeeze(element[0:1, :, :, :])) for element in elements]
+    elements[2] = elements[2].save(f"{path}_image.jpg")
+    elements[3] = elements[3].save(f"{path}_image_pred.jpg")
+    elements[0] = elements[0].save(f"{path}_mask.jpg")
+    elements[1] = elements[1].save(f"{path}_mask_pred.jpg")
+
+
+
+def train(epochs, batch_size=2, lr=0.0001):
+
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print(f"Using {device} device.")
+
+    print("Loading Datasets...")
+    train_dataloader = DataLoader().load_data(batch_size)
+    print("Dataset Loaded.")
+
+    print("Initializing Parameters...")
+    model = EncoderDecoder_B()
+    optimizer = optim.AdamW(model.parameters(), lr)
+    mseloss = torch.nn.MSELoss()
+    loss_train = []
+    start = 0
+    epochs = epochs
+    print(f"Parameters Initialized...")
+
+    print(f"Starting to train for {epochs} epochs.")
+    for epoch in range(start, epochs):
+        print(f"Epoch no: {epoch+1}")
+        _loss = 0
+        num = random.randint(0, 100)
+        for i, (image, mask) in enumerate(tqdm(train_dataloader)):
+            mask_prev, latent, mask_pred, image_pred = model(image)
+            loss1 = mseloss(mask_pred, mask_prev)
+            loss2 = mseloss(image_pred, image)
+            loss = loss1 + 2*loss2
+            _loss += loss.item()
+            loss.backward()
+            optimizer.step()
+            if i == num:
+                save_sample(epoch+1, mask, mask_pred, image, image_pred)
+        loss_train.append(_loss)
+        print(f"Epoch: {epoch+1}, Training loss: {_loss}")
+        if loss_train[-1] == min(loss_train):
+            print('Saving Model...')
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': loss_train
+            }, f'saved_model/road_EncoderDecoderB.tar')
+        print('\nProceeding to the next epoch...')
+
+
+
+train(epochs=10)
+    
+
+

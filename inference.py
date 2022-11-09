@@ -1,8 +1,10 @@
 import os
 import random
 
+import cv2
+import numpy as np
 import torch
-from PIL import Image
+from PIL import Image, ImageFilter
 from torchvision import transforms
 
 from EncoderDecoder_A1 import FCT
@@ -25,10 +27,29 @@ class Inference():
             model.load_state_dict(check['model_state_dict'])
         else:
             model = UNet(in_channels=3, out_channels=1)
-            check = torch.load('saved_model/model.tar')
+            check = torch.load('saved_model/endoscopy_model_unet.tar')
             model.load_state_dict(check['model_state_dict'])
         model = model.to(self.device)
         return model
+
+
+    def __create_edge(self, mask, image):
+        mask = mask.filter(ImageFilter.Kernel((3, 3), (-1, -1, -1, -1, 8,
+                                          -1, -1, -1, -1), 1/4, 0))
+        # new_image = np.add(mask, image)
+        image = np.array(image)
+        # new_image.show()
+
+        for i in range(np.array(mask).shape[0]):
+            for j in range(np.array(mask).shape[1]):
+                if np.array(mask)[i][j] == 255:
+                    # for pixWidth in range(-1, 2):
+                    image[i][j] = [255, 255, 255] 
+        image = transforms.ToPILImage()(image)
+        # return image
+        return image
+
+
 
 
     def __view_sample(self, x, y, y_pred):
@@ -36,9 +57,10 @@ class Inference():
         y = torch.squeeze(y)
         y_pred = torch.squeeze(y_pred)
         x = transforms.ToPILImage()(x)
-        y = transforms.ToPILImage()(y)
+        y = transforms.ToPILImage()(y).convert('L')
         y_pred = transforms.ToPILImage()(y_pred)
-        images = [x, y_pred, y]
+        stacked = self.__create_edge(y_pred, x)
+        images = [x, y_pred, y, stacked]
         widths, heights = zip(*(i.size for i in images))
         total_width = sum(widths)
         max_height = max(heights)
