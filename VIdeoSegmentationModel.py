@@ -1,35 +1,13 @@
+from collections import deque
+
 import numpy as np
 import torch
 import torch.nn as nn
 from torchsummary import summary
 
+from dataset import DataLoader
 from EncoderDecoder_A2 import UNet
-from EncoderDecoder_B import (DS_out, EncoderDecoder_B, dec_Block, enc_Block,
-                              linear_bottleneck)
-
-
-class Encoder(nn.Module):
-    def __init__(self, in_channels=3):
-        super(Encoder, self).__init__()
-        self.unet, self.enc_block, self.linear = self.load_model()
-
-    def load_model(self):
-        modelA = UNet(in_channels=3)
-        modelB = enc_Block(in_channels=4)
-        linear = linear_bottleneck(512*2*2, 512)
-        # check1 = torch.load('saved_model/model.tar')
-        # modelA.load_state_dict(check1['model_state_dict'])
-        return modelA, modelB, linear
-
-    def forward(self, x):
-        x1 = self.unet(x)
-        X = torch.cat((x, x1), dim=1)
-        x = self.enc_block(X)
-        x = x.view(-1, 512*2*2)
-        x = self.linear(x)
-        x = x.unsqueeze(dim=1)
-        return x
-    
+from EncoderDecoder_B import Decoder, DS_out, Encoder, EncoderDecoder_B
 
 
 class TransformerDec(nn.Module):
@@ -44,54 +22,45 @@ class TransformerDec(nn.Module):
 
 
 
-class Decoder(nn.Module):
+class SegmentationModel():
+
     def __init__(self):
-        super(Decoder, self).__init__()
-        self.linear = linear_bottleneck(512, 512*4)
-        self.decBlock = dec_Block(512, 16)
-        self.ds_mask = DS_out("mask", 16, 1)
+        self.encoder, self.transdec, self.decoder, self.dsOut = self.load_models()
+        self.sequence_length = 8
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    def load_models(self):
+        encoder = Encoder()
+        check = torch.load_state_dict('saved_model/road_EncoderDecoderB.tar')
 
-    def forward(self, x):
-        x = x.view(-1, 512)
-        x = self.linear(x)
-        x = x.view(x.size(0), 512, 2, 2)
-        x = self.ds_mask(self.decBlock(x))
-        return x
-
-
-
+        transDec = TransformerDec()
+        decoder = Decoder(512, 16)
+        dsOut = DS_out('mask', 16, 3)
+        return encoder, transDec, decoder, dsOut
 
 
-#initializing components
-encoder = Encoder()
-transDec = TransformerDec()
-decoder = Decoder()
+    def train(self):
+        target = torch.rand(size=(1, 1, 512))
+        flag = 1
+        buffer = deque()
+        mseloss 
+        self.train_dataloader = DataLoader().load_data(self.batch_size)
+        for epoch in range(epochs):
+            for i, (x, y) in enumerate(tqdm(self.train_dataloader)):
+                x = torch.rand(size=(3, 256, 256))
+                # x, y = x.to(self.device), y.to(self.device)
+                print(f"Input Frame {i+1}")
+                out = encoder(x)
+                buffer.append(out.tolist())
+                if len(buffer) == sequence_length:
+                    memory = torch.Tensor(buffer)
+                    x = transDec(target, memory)
+                    target = x
+                    x = decoder(x)
+                    buffer.pop()
 
-#initializing buffer and start of sequence for the transfomer decoder
-sequence_length = 8
-buffer = torch.ones((8, 1, 512))
-# buffer2 = torch.ones((8, 1, 512))
-sos = torch.rand(size=(1, 1, 512))
-
-video_length = 1000
-
-flag = 0
-index_counter = 0
-for i in range(video_length):
-    input_frame = torch.rand(size=(1, 3, 256, 256))
-    print(f"Input Frame {flag}")
-    out = encoder(input_frame)
-    buffer2 = buffer[1: , :, :]
-    buffer = torch.cat((buffer2, out))
-    x = transDec(sos, buffer)
-    sos = x
-    x = decoder(x)
-    print(f"Decoder output {x.shape}")
-    # print(buffer.shape)
-    # print(f"Latent {flag} added...")
-    flag += 1
-        
-
+model = SegmentationModel()
+model.train()
 
 
 

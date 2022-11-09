@@ -17,7 +17,7 @@ class Trainer():
         self.model_name = model_name
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.network = self.load_network()
-        self.batch_size = 2
+        self.batch_size = 8
 
     def load_network(self):
         if self.model_name == "focusnet":

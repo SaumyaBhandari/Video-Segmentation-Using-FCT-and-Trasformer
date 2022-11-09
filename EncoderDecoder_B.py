@@ -191,7 +191,7 @@ def train(epochs, batch_size=2, lr=0.0001):
 
 
 
-train(epochs=10)
+# train(epochs=10)
     
 
 
