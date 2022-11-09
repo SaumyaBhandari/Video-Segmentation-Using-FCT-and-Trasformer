@@ -41,7 +41,7 @@ class Trainer():
     def train(self, epochs, lr=0.0001):
 
         print("Loading Datasets...")
-        self.train_dataloader =DataLoader().load_data(self.batch_size)
+        train_dataloader = DataLoader().load_data(self.batch_size)
         print("Dataset Loaded... initializing parameters...")
         model = self.network
         optimizer = optim.AdamW(model.parameters(), lr)
@@ -56,7 +56,7 @@ class Trainer():
             print(f"Epoch no: {epoch+1}")
             _loss = 0
             num = random.randint(0, 100)
-            for i, (x, y) in enumerate(tqdm(self.train_dataloader)):
+            for i, (x, y) in enumerate(tqdm(train_dataloader)):
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 y_pred = model(x)

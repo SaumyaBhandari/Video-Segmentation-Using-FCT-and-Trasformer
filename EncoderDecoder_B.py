@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from dataset import DataLoader
 from EncoderDecoder_A2 import UNet
+from loss import DiceLoss
 
 
 #encoder block
@@ -104,7 +105,7 @@ class DS_out(nn.Module):
     def forward(self, x):
         x = self.relu(self.conv1(x))
         if self.output == 'mask':
-            out = self.relu(self.conv2(x))
+            out = self.sigmoid(self.conv2(x))
         else:
             out = self.relu(self.conv2(x))
         return out
@@ -157,6 +158,7 @@ def train(epochs, batch_size=2, lr=0.0001):
     model = EncoderDecoder_B()
     optimizer = optim.AdamW(model.parameters(), lr)
     mseloss = torch.nn.MSELoss()
+    diceloss = DiceLoss()
     loss_train = []
     start = 0
     epochs = epochs
@@ -169,7 +171,7 @@ def train(epochs, batch_size=2, lr=0.0001):
         num = random.randint(0, 100)
         for i, (image, mask) in enumerate(tqdm(train_dataloader)):
             mask_prev, latent, mask_pred, image_pred = model(image)
-            loss1 = mseloss(mask_pred, mask_prev)
+            loss1 = diceloss(mask_pred, mask_prev)
             loss2 = mseloss(image_pred, image)
             loss = loss1 + 2*loss2
             _loss += loss.item()
