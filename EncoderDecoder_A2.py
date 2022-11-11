@@ -67,6 +67,6 @@ class UNet(nn.Module):
 
 
 # data = (torch.rand(size=(1, 3, 256, 256)))
-# model = UNet()
+# model = UNet(out_channels=3)
 # out = model(data)
 # print(out.shape)

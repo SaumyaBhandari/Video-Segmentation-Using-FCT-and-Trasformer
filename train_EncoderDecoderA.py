@@ -25,8 +25,8 @@ class Trainer():
             check = torch.load('saved_model/model_focusnet.tar')
         else:
             model = UNet(in_channels=3, out_channels=3)
-            # check = torch.load('saved_model/model.tar')
-        # model.load_state_dict(check['model_state_dict'])
+            check = torch.load('saved_model/road_model_unet.tar')
+        model.load_state_dict(check['model_state_dict'])
         model = model.to(self.device)
         return model
     
@@ -55,7 +55,7 @@ class Trainer():
         for epoch in range(start, epochs):
             print(f"Epoch no: {epoch+1}")
             _loss = 0
-            num = random.randint(0, 100)
+            num = random.randint(0, 40)
             for i, (x, y) in enumerate(tqdm(train_dataloader)):
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
@@ -72,17 +72,17 @@ class Trainer():
 
             print(f"Epoch: {epoch+1}, Training loss: {_loss}")
 
-            if loss_train[-1] == min(loss_train):
+            if epoch%50 == 0:
                 print('Saving Model...')
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                     'loss': loss_train
-                }, f'saved_model/road_model_{self.model_name}.tar')
+                }, f'saved_model/road_model_{self.model_name}_{epoch}.tar')
             print('\nProceeding to the next epoch...')
     
 
 model = "unet"
 seg = Trainer(model)
-seg.train(epochs=60) 
+seg.train(epochs=1000) 
