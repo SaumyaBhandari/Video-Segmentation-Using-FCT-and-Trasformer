@@ -45,7 +45,7 @@ class SegmentationModel():
 
 
     def save_sample(self, epoch, mask, mask_pred, x, frame):
-        path = f'sneekpeeks_model_training/{epoch}'
+        path = f'Training Sneekpeeks/sneekpeeks_model_training/{epoch}'
         elements = [mask, mask_pred, x, frame]
         elements = [transforms.ToPILImage()(torch.squeeze(element[0:1, :, :, :])) for element in elements]
         elements[2] = elements[2].save(f"{path}_image.jpg")

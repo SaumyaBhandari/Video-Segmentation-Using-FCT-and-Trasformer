@@ -49,7 +49,7 @@ class EncoderBlock(nn.Module):
 class DecoderBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.upsample = nn.Upsample(scale_factor=2)
+        self.upsample = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=2, stride=2)
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, 1, padding="same")
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, 1, padding="same")
         self.conv3 = nn.Conv2d(out_channels, out_channels, 3, 1, padding="same")
@@ -70,7 +70,7 @@ class DS_out(nn.Module):
     def __init__(self, output, in_channels, out_channels):
         super().__init__()
         self.output = output
-        self.upsample = nn.Upsample(scale_factor=2)
+        self.upsample = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=2, stride=2)
         self.conv1 = nn.Conv2d(in_channels, in_channels, 3, 1, padding="same")
         self.conv2 = nn.Conv2d(in_channels, in_channels, 3, 1, padding="same")
         self.conv3 = nn.Conv2d(in_channels, out_channels, 3, 1, padding="same")
@@ -164,7 +164,7 @@ class EncoderDecoder_B2(nn.Module):
 
 
 def save_sample(epoch, mask, mask_pred, x, frame):
-    path = f'sneakpeeks_EncoderDecoderB/{epoch}'
+    path = f'Training Sneakpeeks/sneakpeeks_EncoderDecoderB/{epoch}'
     elements = [mask, mask_pred, x, frame]
     elements = [transforms.ToPILImage()(torch.squeeze(element[0:1, :, :, :])) for element in elements]
     elements[2] = elements[2].save(f"{path}_image.jpg")
