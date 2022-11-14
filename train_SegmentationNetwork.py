@@ -6,8 +6,8 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from dataset import DataLoader
-from EncoderDecoder_A1 import FCT
-from EncoderDecoder_A2 import UNet
+from segmentationFCT import FCT
+from segmentationUNet import UNet
 from loss import DiceLoss
 
 
@@ -22,12 +22,12 @@ class Trainer():
     def load_network(self, pretrained):
         if self.model_name == "focusnet":
             model = FCT()
-            if pretrained == True:
+            if pretrained:
                 check = torch.load('saved_model/model_focusnet.tar')
                 model.load_state_dict(check['model_state_dict'])
         else:
             model = UNet(in_channels=3, out_channels=3)
-            if pretrained == True:
+            if pretrained:
                 check = torch.load('saved_model/road_model_unet.tar')
                 model.load_state_dict(check['model_state_dict'])
         model = model.to(self.device)

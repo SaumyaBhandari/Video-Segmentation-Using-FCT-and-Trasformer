@@ -26,7 +26,6 @@ class TransformerDec(nn.Module):
         return x
 
 
-
 class SegmentationModel():
 
     def __init__(self):

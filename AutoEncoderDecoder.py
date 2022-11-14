@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from dataset import DataLoader
 from EncoderDecoder_A2 import UNet
-from loss import DiceLoss, CrossEntropy2d
+from loss import DiceLoss
 
 
 class Linear(nn.Module):
@@ -23,7 +23,7 @@ class Linear(nn.Module):
         x = self.relu(self.linear(x))
         return x
 
-
+I liI 
 
 class EncoderBlock(nn.Module):
     def __init__(self, blk, in_channels, out_channels):
