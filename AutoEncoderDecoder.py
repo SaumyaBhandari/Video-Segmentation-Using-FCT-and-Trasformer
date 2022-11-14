@@ -9,8 +9,9 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from dataset import DataLoader
-from EncoderDecoder_A2 import UNet
-from loss import DiceLoss
+from segmentationUNet import UNet
+# from segmentationFCT import FCT
+from metric import DiceLoss, JaccardScore
 
 
 class Linear(nn.Module):
@@ -23,7 +24,7 @@ class Linear(nn.Module):
         x = self.relu(self.linear(x))
         return x
 
-I liI 
+
 
 class EncoderBlock(nn.Module):
     def __init__(self, blk, in_channels, out_channels):
@@ -86,7 +87,6 @@ class DS_out(nn.Module):
 
 
 
-
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
@@ -117,7 +117,6 @@ class Encoder(nn.Module):
 
 
 
-
 class Decoder(nn.Module):
     def __init__(self):
         super().__init__()
@@ -140,7 +139,6 @@ class Decoder(nn.Module):
         x = self.relu(self.block_4(x))
         out = self.dropout(x)
         return out
-
 
 
 
@@ -180,7 +178,7 @@ def train(epochs, batch_size=1, lr=0.0001):
     print(f"Using {device} device.")
 
     print("Loading Datasets...")
-    train_dataloader = DataLoader().load_data(batch_size)
+    train_dataloader, test_dataloader = DataLoader().load_data(batch_size)
     print("Dataset Loaded.")
 
     print("Initializing Parameters...")
@@ -189,28 +187,42 @@ def train(epochs, batch_size=1, lr=0.0001):
     mseloss = torch.nn.MSELoss()
     crossentloss = torch.nn.CrossEntropyLoss()
     # diceloss = DiceLoss()
-    loss_train = []
+    loss_train, loss_test = [], []
     start = 0
     epochs = epochs
     print(f"Parameters Initialized...")
 
     print(f"Starting to train for {epochs} epochs.")
+
     for epoch in range(start, epochs):
         print(f"Epoch no: {epoch+1}")
-        _loss = 0
-        num = random.randint(0, 9)
+        _loss_train, _loss_test_image, _loss_test_mask, _sum_loss = 0, 0, 0, 0
+
         for i, (image, mask) in enumerate(tqdm(train_dataloader)):
+            optimizer.zero_grad()
             mask_prev, latent, mask_pred, image_pred = model(image)
             loss1 = mseloss(mask_pred, mask_prev)
             loss2 = crossentloss(image_pred, image)
             loss = loss1 + loss2
-            _loss += loss.item()
+            _loss_train += loss.item()
             loss.backward()
             optimizer.step()
-            # if i == num:
             save_sample(epoch+1, mask_prev, mask_pred, image, image_pred)
-        loss_train.append(_loss)
-        print(f"Epoch: {epoch+1}, Training loss: {_loss}")
+
+        for i, (image, mask) in enumerate(tqdm(test_dataloader)):
+            mask_prev, latent, mask_pred, image_pred = model(image)
+            loss1 = mseloss(mask_pred, mask_prev)
+            loss2 = crossentloss(image_pred, image)
+            loss = loss1 + loss2
+            _loss_test_image += loss1.item()
+            _loss_test_mask += loss2.item()
+            _sum_loss += loss.item()
+
+        loss_train.append(_loss_train)
+        loss_test.append(_sum_loss)
+        
+        print(f"Epoch: {epoch+1}, Training loss: {_loss_train}, Testing Loss: {_sum_loss}, Testing Loss Image: {_loss_test_image}, Testing Loss Mask: {_loss_test_mask}")
+
         if epoch%50==0:
             print('Saving Model...')
             torch.save({

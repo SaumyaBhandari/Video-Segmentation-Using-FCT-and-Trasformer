@@ -7,23 +7,6 @@ from PIL import Image
 from torchvision import transforms
 
 
-class DataLoader():
-
-    def __init__(self):
-        self.transform =  transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
-
-    def make_data(self):
-        traindata = []
-        for image, label  in zip(os.listdir('Datasets/Driving_Dataset/train_images'), os.listdir('Datasets/Driving_Dataset/train_masks')):
-            traindata.append([f'Datasets/Driving_Dataset/train_images/{image}', f'Datasets/Driving_Dataset/train_masks/{label}'])
-        return traindata
-
-    def load_data(self, batch_size):
-        traindata= self.make_data()
-        train_dataset = Dataset(traindata, self.transform)
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-        return train_dataloader
-
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, data, transforms=None):
@@ -40,6 +23,33 @@ class Dataset(torch.utils.data.Dataset):
         mask = Image.open(mask_path).convert("RGB")
         mask = self.transform(mask)
         return image, mask
+
+
+
+class DataLoader():
+
+    def __init__(self):
+        self.transform =  transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor()])
+
+    def make_data(self):
+        traindata, testdata = [], []
+        for image, label  in zip(os.listdir('Datasets/Driving_Dataset Mini/train_images'), os.listdir('Datasets/Driving_Dataset Mini/train_masks')):
+            traindata.append([f'Datasets/Driving_Dataset Mini/train_images/{image}', f'Datasets/Driving_Dataset Mini/train_masks/{label}'])
+
+        for image, label  in zip(os.listdir('Datasets/Driving_Dataset Mini/test_images'), os.listdir('Datasets/Driving_Dataset Mini/test_masks')):
+            testdata.append([f'Datasets/Driving_Dataset Mini/test_images/{image}', f'Datasets/Driving_Dataset Mini/test_masks/{label}'])
+        return traindata, testdata
+
+    def load_data(self, batch_size):
+        traindata, testdata = self.make_data()
+        train_dataset = Dataset(traindata, self.transform)
+        test_dataset = Dataset(testdata, self.transform)
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+        return train_dataloader, test_dataloader
+
+
+
 
 
 

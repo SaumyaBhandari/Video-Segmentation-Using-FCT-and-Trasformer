@@ -41,6 +41,8 @@ class SegmentationModel():
         self.decoder = encoderdecoder.decoder
         self.dsOutMask = encoderdecoder.dsMask
         self.dsOutImage = encoderdecoder.dsImage
+        for par in self.encoder.parameters():
+            par.requires_grad = False
 
 
     def save_sample(self, epoch, mask, mask_pred, x, frame):
@@ -55,11 +57,9 @@ class SegmentationModel():
 
 
     def train(self, epochs, batch_size=1, lr=0.0001):
-        target = torch.rand(size=(1, 1, 512))
+        target = torch.rand(size=(1, 1, 1024))
         flag = 1
         buffer = deque()
-        # targ = deque()
-        # targ.append(target.tolist())
         train_dataloader = DataLoader().load_data(batch_size)
         model = self.transdec
         optimizer = optim.AdamW(model.parameters(), lr)

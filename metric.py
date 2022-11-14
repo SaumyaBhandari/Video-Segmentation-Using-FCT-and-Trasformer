@@ -28,8 +28,11 @@ class JaccardScore(nn.Module):
     def __init__(self):
         super(JaccardScore, self).__init__()
     
-    def forward(self, predicted_mask, actual_mask):
-        intersection = np.logical_and(actual_mask, predicted_mask)
-        union = np.logical_or(actual_mask, predicted_mask)
-        iou_score = np.sum(intersection) / np.sum(union)  
+    def forward(self, y_pred, y_true):
+        assert y_pred.size() == y_true.size()
+        y_pred = y_pred[:, 0].contiguous().view(-1)
+        y_true = y_true[:, 0].contiguous().view(-1)
+        intersection = torch.logical_and(y_true, y_pred)
+        union = torch.logical_or(y_true, y_pred)
+        iou_score = torch.sum(intersection) / torch.sum(union)  
         return iou_score

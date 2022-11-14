@@ -8,7 +8,7 @@ from tqdm import tqdm
 from dataset import DataLoader
 from segmentationFCT import FCT
 from segmentationUNet import UNet
-from loss import DiceLoss
+from metric import DiceLoss, JaccardScore
 
 
 class Trainer():
@@ -44,34 +44,46 @@ class Trainer():
     def train(self, epochs, lr=0.0001):
 
         print("Loading Datasets...")
-        train_dataloader = DataLoader().load_data(self.batch_size)
+        train_dataloader, test_dataloader = DataLoader().load_data(self.batch_size)
         print("Dataset Loaded... initializing parameters...")
         model = self.network
         optimizer = optim.AdamW(model.parameters(), lr)
-        # dsc_loss = DiceLoss()
-        crossentloss = torch.nn.CrossEntropyLoss()
+        crossentloss = torch.nn.CrossEntropyLoss()  
+        iou = JaccardScore()
 
-        loss_train = []
+        loss_train, loss_test = [], []
         start = 0
         epochs = epochs
         print(f"Starting to train for {epochs} epochs.")
+
         for epoch in range(start, epochs):
-            print(f"Epoch no: {epoch+1}")
-            _loss = 0
+            _loss_train, _loss_test, _measure = 0, 0, 0
+            print(f"Training... at Epoch no: {epoch+1}")
+
             for i, (x, y) in enumerate(tqdm(train_dataloader)):
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 y_pred = model(x)
                 # loss = dsc_loss(y_pred, y)
                 loss = crossentloss(y_pred, y)
-                _loss += loss.item()
+                _loss_train += loss.item()
                 loss.backward()
                 optimizer.step()
                 self.save_sample(epoch+1, x, y, y_pred)
+            
+            print(f'Evaluating the performace of {epoch+1} epoch.')
+            for i, (x, y) in enumerate(tqdm(test_dataloader)):
+                x, y = x.to(self.device), y.to(self.device)
+                y_pred = model(x)
+                loss = crossentloss(y_pred, y)
+                measure = iou(y_pred, y)
+                _measure += measure.item()
+                _loss_test += loss.item()
 
-            loss_train.append(_loss)
+            loss_train.append(_loss_train)
+            loss_test.append(_loss_test)
 
-            print(f"Epoch: {epoch+1}, Training loss: {_loss}")
+            print(f"Epoch: {epoch+1}, Training loss: {_loss_train}, Testing Loss: {_loss_test} || Jaccard Score : {_measure}")
 
             if epoch%50 == 0:
                 print('Saving Model...')
@@ -82,6 +94,8 @@ class Trainer():
                     'loss': loss_train
                 }, f'saved_model/road_model_{self.model_name}_{epoch}.tar')
             print('\nProceeding to the next epoch...')
+
+
     
 
 model = "unet"

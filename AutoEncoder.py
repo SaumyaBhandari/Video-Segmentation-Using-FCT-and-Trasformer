@@ -9,8 +9,9 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from dataset import DataLoader
-from EncoderDecoder_A2 import UNet
-from loss import DiceLoss, CrossEntropy2d
+from segmentationUNet import UNet
+# from segmentationFCT import FCT
+from metric import DiceLoss
 
 
 #encoder block
@@ -198,6 +199,8 @@ def train(epochs, batch_size=2, lr=0.0001):
                 'loss': loss_train
             }, f'saved_model/road_EncoderDecoderB_{epoch}.tar')
         print('\nProceeding to the next epoch...')
+
+        
 
 
 
