@@ -33,11 +33,11 @@ class DataLoader():
 
     def make_data(self):
         traindata, testdata = [], []
-        for image, label  in zip(os.listdir('Datasets/Driving_Dataset Mini/train_images'), os.listdir('Datasets/Driving_Dataset Mini/train_masks')):
-            traindata.append([f'Datasets/Driving_Dataset Mini/train_images/{image}', f'Datasets/Driving_Dataset Mini/train_masks/{label}'])
+        for image, label  in zip(os.listdir('Datasets/Driving_Dataset/train_images'), os.listdir('Datasets/Driving_Dataset/train_masks')):
+            traindata.append([f'Datasets/Driving_Dataset/train_images/{image}', f'Datasets/Driving_Dataset/train_masks/{label}'])
 
-        for image, label  in zip(os.listdir('Datasets/Driving_Dataset Mini/test_images'), os.listdir('Datasets/Driving_Dataset Mini/test_masks')):
-            testdata.append([f'Datasets/Driving_Dataset Mini/test_images/{image}', f'Datasets/Driving_Dataset Mini/test_masks/{label}'])
+        for image, label  in zip(os.listdir('Datasets/Driving_Dataset/test_images'), os.listdir('Datasets/Driving_Dataset/test_masks')):
+            testdata.append([f'Datasets/Driving_Dataset/test_images/{image}', f'Datasets/Driving_Dataset/test_masks/{label}'])
         return traindata, testdata
 
     def load_data(self, batch_size):
